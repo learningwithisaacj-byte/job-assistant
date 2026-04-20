@@ -1,0 +1,47 @@
+# render.yaml  – Deploy on Render.com (free tier)
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ── FastAPI Backend ───────────────────────────────────────────────────────
+  - type: web
+    name: job-assistant-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # Set manually in Render dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: job-assistant-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: OUTPUT_DIR
+        value: /tmp/outputs
+      - key: MATCH_THRESHOLD
+        value: "65"
+    disk:
+      name: outputs
+      mountPath: /tmp/outputs
+      sizeGB: 1
+
+  # ── Streamlit Frontend ────────────────────────────────────────────────────
+  - type: web
+    name: job-assistant-ui
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      streamlit run frontend/app.py
+      --server.port $PORT
+      --server.address 0.0.0.0
+      --server.headless true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+databases:
+  - name: job-assistant-db
+    databaseName: job_assistant
+    user: postgres
+    plan: free
